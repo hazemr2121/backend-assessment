@@ -16,6 +16,10 @@ That is the usual task-management model. A status represents the task’s curren
 
 Since it's a production level we must make sure making a change like this won't break the existing records for users.
 
+### “Recent” must have an explicit business definition
+
+The report defines recent activity as timestamps from the last seven days, excluding future or invalid timestamps. Make the reporting window configurable if product requirements differ.
+
 ## Maintainability
 
 ### Tasks validation was duplicated and inconsistent
