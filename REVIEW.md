@@ -30,6 +30,10 @@ Since it's a production level we must make sure making a change like this won't 
 
 The report defines recent activity as timestamps from the last seven days, excluding future or invalid timestamps. Make the reporting window configurable if product requirements differ.
 
+### Temporary-file IDs duplicated UUID generation
+
+`jsonStore` originally generated UUIDs independently for its temporary filenames even though the project already provides `createId` in `src/utils/id.js`. Duplicated utility logic can diverge over time. The JSON store now reuses the shared helper.
+
 ### Activity naming was unclear and not consistent
 
 Names such as `get_activity`, `aSvc`, and `loadDataA` obscured intent. The refactor uses descriptive names and preserves Activity's original raw response shape for compatibility. A future API version could standardize response envelopes across resources.

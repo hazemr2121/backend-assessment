@@ -1,12 +1,12 @@
-const fs = require('node:fs/promises');
-const path = require('node:path');
-const { randomUUID } = require('node:crypto');
+const fs = require("node:fs/promises");
+const path = require("node:path");
+const { createId } = require("./id");
 
 const writeQueues = new Map();
 
 async function readJsonArray(filePath) {
   try {
-    const raw = await fs.readFile(filePath, 'utf-8');
+    const raw = await fs.readFile(filePath, "utf-8");
     if (!raw.trim()) {
       return [];
     }
@@ -14,8 +14,8 @@ async function readJsonArray(filePath) {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    if (error.code === 'ENOENT') {
-      await fs.writeFile(filePath, '[]\n', 'utf-8');
+    if (error.code === "ENOENT") {
+      await fs.writeFile(filePath, "[]\n", "utf-8");
       return [];
     }
 
@@ -25,15 +25,19 @@ async function readJsonArray(filePath) {
 
 async function writeJsonArray(filePath, data) {
   if (!Array.isArray(data)) {
-    throw new TypeError('JSON store only supports arrays.');
+    throw new TypeError("JSON store only supports arrays.");
   }
 
   const temporaryPath = path.join(
     path.dirname(filePath),
-    `.${path.basename(filePath)}.${randomUUID()}.tmp`
+    `.${path.basename(filePath)}.${createId()}.tmp`,
   );
 
-  await fs.writeFile(temporaryPath, `${JSON.stringify(data, null, 2)}\n`, 'utf-8');
+  await fs.writeFile(
+    temporaryPath,
+    `${JSON.stringify(data, null, 2)}\n`,
+    "utf-8",
+  );
   await fs.rename(temporaryPath, filePath);
 }
 
@@ -49,11 +53,13 @@ function updateJsonArray(filePath, update) {
     });
 
   writeQueues.set(filePath, currentUpdate);
-  currentUpdate.finally(() => {
-    if (writeQueues.get(filePath) === currentUpdate) {
-      writeQueues.delete(filePath);
-    }
-  }).catch(() => undefined);
+  currentUpdate
+    .finally(() => {
+      if (writeQueues.get(filePath) === currentUpdate) {
+        writeQueues.delete(filePath);
+      }
+    })
+    .catch(() => undefined);
 
   return currentUpdate;
 }
