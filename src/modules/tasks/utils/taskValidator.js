@@ -1,6 +1,7 @@
 const HttpError = require('../../../utils/httpError');
 
-const ALLOWED_FIELDS = ['title', 'completed'];
+const ALLOWED_FIELDS = ['title', 'status', 'completed'];
+const TASK_STATUSES = ['todo', 'in-progress', 'done'];
 
 function validatePayloadShape(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -49,19 +50,54 @@ function normalizeCompletedIfPresent(payload, normalized) {
   normalized.completed = payload.completed;
 }
 
+function normalizeStatusIfPresent(payload, normalized) {
+  if (!Object.hasOwn(payload, 'status')) {
+    return;
+  }
+
+  if (typeof payload.status !== 'string' || !TASK_STATUSES.includes(payload.status)) {
+    throw new HttpError(400, '"status" must be one of: todo, in-progress, done.');
+  }
+
+  normalized.status = payload.status;
+}
+
+function synchronizeStatusAndCompleted(normalized) {
+  if (Object.hasOwn(normalized, 'status')) {
+    const completedForStatus = normalized.status === 'done';
+
+    if (
+      Object.hasOwn(normalized, 'completed') &&
+      normalized.completed !== completedForStatus
+    ) {
+      throw new HttpError(400, '"completed" must match the supplied "status".');
+    }
+
+    normalized.completed = completedForStatus;
+    return;
+  }
+
+  if (Object.hasOwn(normalized, 'completed')) {
+    normalized.status = normalized.completed ? 'done' : 'todo';
+  }
+}
+
 function validateCreateTask(payload) {
   validatePayloadShape(payload);
   ensureNoUnknownFields(payload);
 
   const normalized = {};
   normalizeTitleIfPresent(payload, normalized);
+  normalizeStatusIfPresent(payload, normalized);
   normalizeCompletedIfPresent(payload, normalized);
+  synchronizeStatusAndCompleted(normalized);
 
   if (!Object.hasOwn(normalized, 'title')) {
     throw new HttpError(400, '"title" is required.');
   }
 
-  if (!Object.hasOwn(normalized, 'completed')) {
+  if (!Object.hasOwn(normalized, 'status')) {
+    normalized.status = 'todo';
     normalized.completed = false;
   }
 
@@ -74,7 +110,9 @@ function validateUpdateTask(payload) {
 
   const normalized = {};
   normalizeTitleIfPresent(payload, normalized);
+  normalizeStatusIfPresent(payload, normalized);
   normalizeCompletedIfPresent(payload, normalized);
+  synchronizeStatusAndCompleted(normalized);
 
   if (Object.keys(normalized).length === 0) {
     throw new HttpError(400, 'Provide at least one updatable field.');
